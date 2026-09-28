@@ -45,7 +45,19 @@ Add each submission to `bots.json`:
 ]
 ```
 
-`name` is the label shown in the browser; optional `icon` (emoji or short text) and `color` (a six-digit hex color) identify that bot on clocks, blocks, inventories, pair selectors, and standings. If omitted, the runner assigns a robot icon and a palette color. `cwd` resolves relative to the manifest file. Commands run directly without a shell; paths and arguments remain separate strings. `{python}` resolves to the runner's Python interpreter. Multiple Python modules, Java class files, C++ sources, resources, and other supporting files are allowed. Build steps are run separately by the organizer, not automatically by the runner. Use portable relative paths.
+`name` is the label shown in the browser; optional `icon` (emoji or short text) and `color` (a six-digit hex color) identify that bot on clocks, blocks, inventories, pair selectors, and standings. If omitted, the runner assigns a robot icon and a palette color. `cwd` resolves relative to the manifest file. Commands run directly without a shell; paths and arguments remain separate strings. `{python}` resolves to the runner's Python interpreter. The runner is language-agnostic: any command-line program that can read the protocol JSON from stdin and write one move JSON object to stdout can be used. This includes C, C++, Julia, Python, Java, Rust, and other installed runtimes. Multi-file projects and supporting data are allowed. Build or setup steps are run separately before the tournament, not automatically by the runner. Use portable relative paths.
+
+### Sample bots
+
+Working protocol examples are in `bots/samples/`, and `sample-bots.json` lists one bot per supported class language. The Python and Julia examples need no extra packages. C and C++ examples need to be compiled before use; build them on the machine where the competition will run so the executable matches that host:
+
+```sh
+(cd bots/samples/cpp && g++ -std=c++17 -O2 bot.cpp -o bot)
+(cd bots/samples/c && gcc -std=c11 -O2 bot.c -o bot)
+python3 -m notipping --bots sample-bots.json --serve
+```
+
+Make sure `julia` is installed and on `PATH` to include the Julia example. The runner starts a fresh process for each move, so language startup, compilation, and package initialization count against that bot's clock. Compile native bots and precompile any packages before game day. The Julia runtime is not installed in this development environment, so its example is included in the test suite but skipped here; it uses only Julia's built-in regex and I/O support.
 
 **A new process launches for each move**, with the bot folder as its working directory. Read one JSON object from stdin, print exactly one JSON move to stdout, then exit. Send diagnostic messages to stderr. Imports and startup count against the active player’s remaining clock. Use game state as your source of truth; in-memory variables do not persist across turns. If storing files, namespace them by game and player, and clear stale data between tournament runs (game IDs restart at 1 each run).
 
