@@ -1,0 +1,4 @@
+[
+  {"name": "Random A", "icon": "🎲", "color": "#79bcff", "cwd": "bots/random", "command": ["{python}", "bot.py"]},
+  {"name": "Random B", "icon": "🐙", "color": "#e9a9ef", "cwd": "bots/random", "command": ["{python}", "bot.py"]}
+]

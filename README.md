@@ -1,0 +1,96 @@
+# No Tipping
+
+A Python standard-library tournament runner and browser replay interface for macOS and Linux, including NYU crunchy5. Requires Python 3.8+; no pip packages or Node installation required. The project has been tested locally; crunchy5 access and installed runtimes have not been verified.
+
+## Run locally
+
+From this folder:
+
+```sh
+python3 -m notipping --serve
+```
+
+Open http://127.0.0.1:8000 and set **Weights per player (k)** to any integer from **1 to 24**, then click **Run tournament**. You can choose a different k before each tournament without restarting the server. The value is locked while a tournament runs and applies to both games of every pairing. `--k` sets the initial browser default; each saved result records the k used. The default clock is **120 seconds per player per game**, shared across all placement and removal turns. Only the player whose bot is responding loses time. If that player’s remaining time reaches zero, they lose on time. Set **Clock per player** before starting a tournament to change the limit. The active game board and both player clocks appear during the tournament; the running player’s clock updates continuously while their bot thinks. Choose **All bot pairings** for a full round robin, or **Choose two bots** to add one matchup. Either choice adds games to the same active tournament and standings; every pair plays twice, swapping who goes first. The first game result appears in a popup; click **Ready for round 2 — roles are switched** to start the swapped game. After Game 2, a result popup reports the matchup winner or tie and offers the next matchup when applicable. Each game and the cumulative standings save as it finishes. Use **New tournament / Reset scores** to clear the current results and begin again. After the first game finishes, k and clock settings stay fixed for that tournament; starting a new one unlocks them. The replay selector and controls are available as games finish. When a move tips the board, the replay names the player who tipped it and animates the scale around the support. Tournament standings count wins across every game in the run and appear beside the replay on wide screens. Expand **Move-by-move log** to see each placement/removal with player, position, weight, and resulting torque; select a move to jump the replay to that state. Use Play, Next, Back, or the slider to inspect the board, inventories, clocks, and result.
+
+For a terminal-only competition:
+
+```sh
+python3 -m notipping --bots bots.json --k 15 --clock 120 --output results.json
+```
+
+Each unordered pair plays exactly twice, with first player swapped. A win earns one point; equal win counts remain tied. Every game is saved in the output JSON. In the browser, the result file is updated as each game completes and a matching saved tournament is restored when the server restarts. Starting a new tournament clears the previous output file and begins a fresh tally. A terminal-only invocation writes its tournament result to the specified output path.
+
+## Run on crunchy5
+
+Copy the project and bot folders to your account, then run the same command there. Build compiled bots on the target machine: macOS executables generally cannot run on Linux. Each bot's runtime and dependencies must be available on the machine where it executes.
+
+To use the browser UI remotely, run `python3 -m notipping --serve` on crunchy5, and in a separate terminal on your laptop forward its port:
+
+```sh
+ssh -L 8000:127.0.0.1:8000 YOUR_USERNAME@YOUR_CRUNCHY5_HOSTNAME
+```
+
+Then visit http://127.0.0.1:8000 locally. Substitute the SSH hostname and any gateway options supplied by NYU. The server binds only to loopback. Use `--port` and matching forwarding ports if 8000 is occupied.
+
+## Classmate submission contract
+
+Submit a folder containing all source files, data files, a dependency/build README, and the launch command as an argument array. **There is no submission file-size limit, file-count limit, or single-file requirement in this runner.** Transfer-service quotas, disk capacity, and university policies still apply separately.
+
+Add each submission to `bots.json`:
+
+```json
+[
+  {"name":"Alice", "icon":"♟️", "color":"#79bcff", "cwd":"bots/alice", "command":["{python}", "main.py"]},
+  {"name":"Bob", "icon":"🤖", "color":"#e9a9ef", "cwd":"bots/bob", "command":["./bot"]}
+]
+```
+
+`name` is the label shown in the browser; optional `icon` (emoji or short text) and `color` (a six-digit hex color) identify that bot on clocks, blocks, inventories, pair selectors, and standings. If omitted, the runner assigns a robot icon and a palette color. `cwd` resolves relative to the manifest file. Commands run directly without a shell; paths and arguments remain separate strings. `{python}` resolves to the runner's Python interpreter. Multiple Python modules, Java class files, C++ sources, resources, and other supporting files are allowed. Build steps are run separately by the organizer, not automatically by the runner. Use portable relative paths.
+
+**A new process launches for each move**, with the bot folder as its working directory. Read one JSON object from stdin, print exactly one JSON move to stdout, then exit. Send diagnostic messages to stderr. Imports and startup count against the active player’s remaining clock. Use game state as your source of truth; in-memory variables do not persist across turns. If storing files, namespace them by game and player, and clear stale data between tournament runs (game IDs restart at 1 each run).
+
+Input example (first turn with k=2):
+
+```json
+{"protocol_version":1,"k":2,"phase":"add","player":0,"board":[{"position":-4,"weight":3,"owner":null}],"remaining":[[1,2],[1,2]],"torques":{"left":-6,"right":6},"clocks":[120,120],"winner":null,"reason":null,"game_id":"1","ply":1,"players":["Alice","Bob"]}
+```
+
+Player 0 always goes first in the current game. Player 1 goes second. Ownership uses these indexes; `null` denotes the initial block. `remaining` contains the unused weights of each player. During `add`, respond with:
+
+```json
+{"position":-3,"weight":2}
+```
+
+The `clocks` array reports the seconds remaining for player 0 and player 1 at the start of your turn.
+
+During `remove`, respond with:
+
+```json
+{"position":-4}
+```
+
+The bundled `bots/random/bot.py` imports `strategy.py`, demonstrating a multi-file submission. It chooses a random remaining weight and its leftmost safe position during placement, and a random safe removal during removal. If the selected weight has no safe placement, it makes a tipping placement; if no safe removal exists, it makes a tipping removal.
+
+## Rules and limits
+
+Course rules come from the supplied No Tipping PDF. The organizer additionally requires two games per pairing. Standings accumulate across all game batches added to the same tournament, including both all-pairings and selected-matchup runs. Starting a new tournament resets the scores. The following operational defaults are implementation choices and can be reviewed before distributing the contract:
+
+- `--k 15` by default, configurable from 1 through 24 (the course requires 2k < 50).
+- `--clock 120`: 120 seconds on each player’s game clock, configurable in the browser or CLI. Time carries across every turn in that game and pauses while the opponent acts.
+- Stdout and stderr may each contain at most **65,536 bytes per move**. This is an output limit, not a source-file or submission-size limit. Output is checked approximately every 10 ms, so a process can briefly exceed the limit before termination.
+- Invalid JSON, invalid moves, failed launches, nonzero exits, excess output, and running out of clock time forfeit the game. The opponent receives one win; the tournament continues.
+- No application-enforced memory or CPU quota beyond the player clock. The UI refreshes the active clock while a tournament is running. Bots execute with the organizer account's filesystem/network permissions; this runner is not a security sandbox. Use an appropriately restricted account or isolated environment for code you do not trust. Process groups are terminated at the end of every move on macOS/Linux.
+
+The board spans integer positions -30 through 30 inclusive and weighs 3 kg at center 0. Supports are -3 and -1; both positions accept weights. The initial 3 kg block occupies -4. Only one block may occupy a position. Each player owns one of each weight 1 through k.
+
+Placement alternates until both inventories are empty, then player 0 begins removal. Either player can remove any placed block, including the opponent's or the initial block. The board itself cannot be removed. No voluntary early removal is allowed.
+
+Torque about support s is `-3*(0-s) - sum(weight*(position-s))`, using clockwise-negative convention and omitting the common gravitational factor. Stability requires left torque <= 0 and right torque >= 0. Zero torque is allowed. A tipping move loses immediately. The bare board is unstable, so a game cannot end in an empty-board draw.
+
+## Verify
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+Tests cover torque, support placements, occupancy, phase transition, removal ownership, initial-block removal, tipping, swapped starts, multi-file bots, and failed/slow/noisy bots.
