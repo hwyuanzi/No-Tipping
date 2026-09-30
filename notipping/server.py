@@ -1,4 +1,5 @@
 import json
+import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -32,6 +33,22 @@ def serve(bots, args):
                     or set(result['scores']) != names or not isinstance(result.get('k'), int)
                     or not isinstance(result.get('clock_seconds'), (int, float))):
                 return None
+            saved_roster = result.get('bots')
+            if isinstance(saved_roster, list) and len(saved_roster) == len(roster):
+                saved_by_name = {bot.get('name'): bot for bot in saved_roster
+                                 if isinstance(bot, dict)}
+                if (set(saved_by_name) == names and all(
+                        isinstance(saved_by_name[name].get('icon'), str)
+                        and saved_by_name[name]['icon']
+                        and len(saved_by_name[name]['icon']) <= 32
+                        and isinstance(saved_by_name[name].get('color'), str)
+                        and re.fullmatch(r'#[0-9a-fA-F]{6}', saved_by_name[name]['color'])
+                        for name in names)):
+                    roster = [{'name': bot['name'], 'icon': saved_by_name[bot['name']]['icon'],
+                               'color': saved_by_name[bot['name']]['color']} for bot in bots]
+                    for bot in bots:
+                        saved_bot = saved_by_name[bot['name']]
+                        bot['icon'], bot['color'] = saved_bot['icon'], saved_bot['color']
             info_by_name = {bot['name']: bot for bot in roster}
             for game in result['games']:
                 if not isinstance(game, dict) or len(game.get('players', [])) != 2:

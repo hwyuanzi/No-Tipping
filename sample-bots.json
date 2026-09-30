@@ -1,6 +1,6 @@
 [
-  {"name":"Sample Python", "icon":"🐍", "color":"#79bcff", "cwd":"bots/samples/python", "command":["{python}", "bot.py"]},
-  {"name":"Sample C++", "icon":"⚙️", "color":"#e9a9ef", "cwd":"bots/samples/cpp", "command":["./bot"]},
-  {"name":"Sample C", "icon":"🔧", "color":"#b6ed80", "cwd":"bots/samples/c", "command":["./bot"]},
-  {"name":"Sample Julia", "icon":"🟣", "color":"#ffb86b", "cwd":"bots/samples/julia", "command":["julia", "--startup-file=no", "bot.jl"]}
+  {"name":"Sample Python", "cwd":"bots/samples/python", "command":["{python}", "bot.py"]},
+  {"name":"Sample C++", "cwd":"bots/samples/cpp", "command":["./bot"]},
+  {"name":"Sample C", "cwd":"bots/samples/c", "command":["./bot"]},
+  {"name":"Sample Julia", "cwd":"bots/samples/julia", "command":["julia", "--startup-file=no", "bot.jl"]}
 ]

@@ -1,8 +1,10 @@
 import argparse
+import colorsys
 import json
 import os
 import re
 from pathlib import Path
+import secrets
 import signal
 import subprocess
 import sys
@@ -12,6 +14,20 @@ from itertools import combinations
 from .game import Game, IllegalMove
 
 OUTPUT_LIMIT = 65536
+BOT_ICONS = (
+    '🐙', '🤖', '🎲', '🐍', '🦊', '🚀', '🐸', '🐼', '🦉', '🐝', '🐬', '🦄',
+    '🐢', '🦖', '🦋', '🐳', '🐧', '🐱', '🐯', '🦁', '🌟', '🔮', '🛸', '🍀',
+    '⚡', '🎯', '🧩', '🦜', '🐨', '🦈', '🌈', '🎨',
+)
+
+
+def _random_bot_color(rng, used):
+    for hue in rng.sample(range(360), 360):
+        rgb = colorsys.hls_to_rgb(hue / 360, 0.68, 0.72)
+        color = '#%02x%02x%02x' % tuple(round(channel * 255) for channel in rgb)
+        if color.lower() not in used:
+            return color
+    raise ValueError('Too many bots to assign distinct colors')
 
 
 def load_bots(path):
@@ -20,13 +36,21 @@ def load_bots(path):
     if not isinstance(entries, list) or len(entries) < 2:
         raise ValueError('Bot manifest must contain at least two bots')
     names = set()
-    palette = ['#79bcff', '#e9a9ef', '#b6ed80', '#ffb86b', '#91a4ff', '#ff8f9c']
+    rng = secrets.SystemRandom()
+    used_icons = {bot['icon'] for bot in entries if isinstance(bot, dict) and bot.get('icon')}
+    used_colors = {bot['color'].lower() for bot in entries
+                   if isinstance(bot, dict) and isinstance(bot.get('color'), str)}
     for index, bot in enumerate(entries):
         if not isinstance(bot.get('name'), str) or not bot['name'] or bot['name'] in names:
             raise ValueError('Each bot needs a unique nonempty name')
         names.add(bot['name'])
-        bot['icon'] = bot.get('icon', '🤖')
-        bot['color'] = bot.get('color', palette[index % len(palette)])
+        if 'icon' not in bot:
+            choices = [icon for icon in BOT_ICONS if icon not in used_icons]
+            bot['icon'] = rng.choice(choices or BOT_ICONS)
+            used_icons.add(bot['icon'])
+        if 'color' not in bot:
+            bot['color'] = _random_bot_color(rng, used_colors)
+            used_colors.add(bot['color'].lower())
         if not isinstance(bot['icon'], str) or not bot['icon'] or len(bot['icon']) > 32:
             raise ValueError('Each bot icon must be a short nonempty string')
         if not isinstance(bot['color'], str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', bot['color']):
