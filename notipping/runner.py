@@ -14,6 +14,10 @@ from itertools import combinations
 from .game import Game, IllegalMove
 
 OUTPUT_LIMIT = 65536
+
+
+class TournamentCancelled(Exception):
+    """Raised when the organizer stops a tournament while a bot is running."""
 BOT_ICONS = (
     '🐙', '🤖', '🎲', '🐍', '🦊', '🚀', '🐸', '🐼', '🦉', '🐝', '🐬', '🦄',
     '🐢', '🦖', '🦋', '🐳', '🐧', '🐱', '🐯', '🦁', '🌟', '🔮', '🛸', '🍀',
@@ -133,7 +137,7 @@ class BotSession:
                         turn['error'] = 'bot output exceeded 64 KiB per stream'
                         turn['event'].set()
 
-    def get_move(self, state, timeout):
+    def get_move(self, state, timeout, cancel_event=None):
         if self.proc is None:
             self._start()
         elif self.proc.poll() is not None:
@@ -152,10 +156,14 @@ class BotSession:
             self.proc.stdin.flush()
             deadline = time.monotonic() + timeout
             while not turn['event'].wait(0.01):
+                if cancel_event is not None and cancel_event.is_set():
+                    raise TournamentCancelled()
                 if time.monotonic() >= deadline:
                     raise ValueError('move timed out')
                 if self.proc.poll() is not None:
                     raise ValueError('bot exited before returning a move')
+            if cancel_event is not None and cancel_event.is_set():
+                raise TournamentCancelled()
             with self.lock:
                 if turn['error']:
                     raise ValueError(turn['error'])
@@ -206,7 +214,7 @@ def get_move(bot, state, timeout):
         session.close()
 
 
-def play(bots, k, clock_seconds, game_id, on_progress=None):
+def play(bots, k, clock_seconds, game_id, on_progress=None, cancel_event=None):
     game = Game(k)
     clocks = [float(clock_seconds), float(clock_seconds)]
     frames = []
@@ -225,6 +233,8 @@ def play(bots, k, clock_seconds, game_id, on_progress=None):
     frame()
     try:
         while game.winner is None:
+            if cancel_event is not None and cancel_event.is_set():
+                raise TournamentCancelled()
             player = game.turn
             state = game.state()
             state.update(game_id=game_id, ply=len(frames), players=players,
@@ -239,10 +249,12 @@ def play(bots, k, clock_seconds, game_id, on_progress=None):
             try:
                 if clocks[player] <= 0:
                     raise ValueError('clock expired')
-                move = sessions[player].get_move(state, clocks[player])
+                move = sessions[player].get_move(state, clocks[player], cancel_event)
                 elapsed = time.monotonic() - started
                 clocks[player] = max(0.0, clocks[player] - elapsed)
                 game.apply(move)
+            except TournamentCancelled:
+                raise
             except (OSError, ValueError, IllegalMove) as exc:
                 elapsed = time.monotonic() - started
                 clocks[player] = max(0.0, clocks[player] - elapsed)
@@ -266,7 +278,7 @@ def play(bots, k, clock_seconds, game_id, on_progress=None):
 
 
 def tournament(bots, k=15, clock_seconds=120, on_progress=None, pairing=None,
-               game_id_start=1, on_game_complete=None):
+               game_id_start=1, on_game_complete=None, cancel_event=None):
     if clock_seconds <= 0:
         raise ValueError('clock_seconds must be positive')
     Game(k)
@@ -286,7 +298,10 @@ def tournament(bots, k=15, clock_seconds=120, on_progress=None, pairing=None,
     for pair_index, (a, b) in enumerate(pairs):
         pair_id = str(game_id_start + len(games))
         for round_number, ordered in enumerate(([a, b], [b, a]), start=1):
-            result = play(ordered, k, clock_seconds, str(game_id_start + len(games)), on_progress)
+            if cancel_event is not None and cancel_event.is_set():
+                raise TournamentCancelled()
+            result = play(ordered, k, clock_seconds, str(game_id_start + len(games)),
+                          on_progress, cancel_event)
             result.update(pairing_id=pair_id, round_number=round_number,
                           pairing_number=pair_index + 1, pairing_count=len(pairs),
                           pairing_bots=[a['name'], b['name']])

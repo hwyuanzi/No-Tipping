@@ -22,6 +22,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The default `bots.json` inc
 - Choose **All bot pairings** to play every unique bot-versus-bot matchup, or **Choose two bots** to play only the selected pair. Click **Run tournament**; each pairing plays twice, switching who goes first.
 - After Game 1, click **Ready for round 2 — roles are switched**. After Game 2, the popup reports the pairing winner or a tie.
 - Wins accumulate across every game added to the tournament. Use **New tournament / Reset scores** to start over.
+- Click **Stop tournament** to quit a run early. Any completed games and scores stay visible; click **New tournament / Reset scores** afterward to choose new settings and start again.
 
 The selected `k` and clock are fixed once a tournament starts. Each player's clock runs only while their bot is responding and carries across all of that player's turns in one game. Results save after each game and restore when the server restarts with the same roster.
 

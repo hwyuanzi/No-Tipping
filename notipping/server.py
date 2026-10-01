@@ -3,7 +3,7 @@ import re
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from .runner import tournament
+from .runner import TournamentCancelled, tournament
 from .game import Game
 
 
@@ -66,8 +66,9 @@ def serve(bots, args):
               'k': restored['k'] if restored else args.k,
               'clock_seconds': restored['clock_seconds'] if restored else args.clock,
               'live': None, 'tournament_id': 1, 'next_action': None,
-              'announcement': None}
+              'announcement': None, 'stop_requested': False, 'cancelled': False}
     resume_game = threading.Event()
+    cancel_tournament = threading.Event()
     page = (Path(__file__).resolve().parent.parent / 'web' / 'index.html').read_bytes()
 
     def public_bot(bot):
@@ -127,8 +128,9 @@ def serve(bots, args):
             if next_action:
                 resume_game.clear()
             save_result_locked()
-        if next_action:
+        if next_action and not cancel_tournament.is_set():
             resume_game.wait()
+        if next_action:
             with lock:
                 status['next_action'] = None
 
@@ -141,9 +143,13 @@ def serve(bots, args):
                                         'scores': {bot['name']: 0 for bot in roster}, 'games': []}
                 start_game_id = len(status['result']['games']) + 1
             tournament(bots, k, clock_seconds, on_progress=progress, pairing=pairing,
-                       game_id_start=start_game_id, on_game_complete=game_complete)
+                       game_id_start=start_game_id, on_game_complete=game_complete,
+                       cancel_event=cancel_tournament)
             with lock:
                 save_result_locked()
+        except TournamentCancelled:
+            with lock:
+                status.update(cancelled=True, announcement=None, next_action=None)
         except Exception as exc:
             with lock:
                 status['error'] = str(exc)
@@ -181,13 +187,28 @@ def serve(bots, args):
                         return
                     status.update(result=None, error=None, live=None, k=args.k,
                                   clock_seconds=args.clock, next_action=None,
-                                  announcement=None,
+                                  announcement=None, stop_requested=False,
+                                  cancelled=False,
                                   tournament_id=status['tournament_id'] + 1)
+                    cancel_tournament.clear()
                     try:
                         output_path.unlink()
                     except FileNotFoundError:
                         pass
                 self.respond(200, json.dumps({'tournament_id': status['tournament_id']}).encode())
+                return
+            if self.path == '/api/stop':
+                if self.headers.get('Origin') != 'http://' + self.headers.get('Host', ''):
+                    self.respond(403, b'{"error":"origin rejected"}')
+                    return
+                with lock:
+                    if not status['running']:
+                        self.respond(409, b'{"error":"there is no running tournament"}')
+                        return
+                    status.update(stop_requested=True, announcement=None, next_action=None)
+                    cancel_tournament.set()
+                    resume_game.set()
+                self.respond(202, b'{"stopping":true}')
                 return
             if self.path == '/api/continue':
                 if self.headers.get('Origin') != 'http://' + self.headers.get('Host', ''):
@@ -238,6 +259,9 @@ def serve(bots, args):
                 if status['running']:
                     self.respond(409, b'{"error":"already running"}')
                     return
+                if status['cancelled']:
+                    self.respond(409, b'{"error":"Start a new tournament to change settings after stopping"}')
+                    return
                 existing = status['result']
                 if existing is not None and existing['games'] and (existing['k'] != k or existing['clock_seconds'] != clock_seconds):
                     self.respond(409, b'{"error":"Start a new tournament before changing k or clock settings"}')
@@ -247,7 +271,9 @@ def serve(bots, args):
                 elif not existing['games']:
                     status.update(k=k, clock_seconds=clock_seconds)
                     existing.update(k=k, clock_seconds=clock_seconds)
-                status.update(running=True, error=None, live=None)
+                cancel_tournament.clear()
+                status.update(running=True, error=None, live=None,
+                              stop_requested=False, cancelled=False)
             threading.Thread(target=run, args=(k, clock_seconds, pairing), daemon=True).start()
             self.respond(202, b'{"running":true}')
 

@@ -1,10 +1,13 @@
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 import sys
 from unittest.mock import patch
 from notipping.game import Game, IllegalMove
-from notipping.runner import BotSession, get_move, load_bots, tournament
+from notipping.runner import (BotSession, TournamentCancelled, get_move,
+                              load_bots, tournament)
 
 class RulesTests(unittest.TestCase):
     def test_initial_torque_includes_board(self):
@@ -74,6 +77,36 @@ class RunnerTests(unittest.TestCase):
             finally:
                 session.close()
 
+    def test_cancellation_stops_a_waiting_bot_process(self):
+        with tempfile.TemporaryDirectory() as cwd:
+            session = BotSession({
+                'cwd': cwd,
+                'command': [sys.executable, '-u', '-c',
+                            'import time; time.sleep(30)'],
+            })
+            cancelled = threading.Event()
+            outcome = []
+
+            def request_move():
+                try:
+                    session.get_move(Game(1).state(), 60, cancelled)
+                except TournamentCancelled:
+                    outcome.append('cancelled')
+
+            worker = threading.Thread(target=request_move)
+            worker.start()
+            deadline = time.monotonic() + 2
+            while session.proc is None and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertIsNotNone(session.proc)
+            cancelled.set()
+            worker.join(timeout=2)
+            try:
+                self.assertFalse(worker.is_alive())
+                self.assertEqual(outcome, ['cancelled'])
+            finally:
+                session.close()
+
     def test_double_round_robin(self):
         bots = load_bots(Path(__file__).resolve().parents[1] / 'bots.json')[:2]
         r = tournament(bots, k=2, clock_seconds=3)
@@ -86,7 +119,8 @@ class RunnerTests(unittest.TestCase):
         bots = load_bots(Path(__file__).resolve().parents[1] / 'bots.json')[:2]
         callbacks = []
 
-        def fake_play(ordered, k, clock_seconds, game_id, on_progress):
+        def fake_play(ordered, k, clock_seconds, game_id, on_progress,
+                      cancel_event=None):
             players = [bot['name'] for bot in ordered]
             return {'players': players, 'winner': players[0], 'reason': 'test',
                     'clock_seconds': clock_seconds, 'game_id': game_id, 'frames': []}
@@ -101,6 +135,17 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual([entry[1:] for entry in callbacks], [(0, 1, 1), (0, 2, 1)])
         self.assertEqual(callbacks[0][0]['pairing_id'], callbacks[1][0]['pairing_id'])
         self.assertEqual(result['games'][0]['players'], list(reversed(result['games'][1]['players'])))
+
+    def test_tournament_cancellation_prevents_the_next_game(self):
+        bots = load_bots(Path(__file__).resolve().parents[1] / 'bots.json')[:2]
+        cancelled = threading.Event()
+        completed = []
+        with self.assertRaises(TournamentCancelled):
+            tournament(bots, k=1, clock_seconds=10,
+                       pairing=[bots[0]['name'], bots[1]['name']],
+                       cancel_event=cancelled,
+                       on_game_complete=lambda *args: (completed.append(args), cancelled.set()))
+        self.assertEqual(len(completed), 1)
 
     def test_failed_bots(self):
         with tempfile.TemporaryDirectory() as cwd:
