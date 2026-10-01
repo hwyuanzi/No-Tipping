@@ -94,14 +94,16 @@ Any command-line program that reads and writes this JSON protocol can be used. T
 Add one entry to `bots.json`. The `cwd` path is relative to `bots.json`. For example:
 
 ```json
-{"name":"Shela's Bot","cwd":"bots/shela-bot","command":["{python}","main.py"]}
+{"name":"Shela's Bot","icon":"🚀","color":"#79bcff","cwd":"bots/shela-bot","command":["{python}","main.py"]}
 ```
 
-For compiled or other-language student bots, set `command` to the executable and arguments needed to start your bot; the runner does not build student code or install packages. Avoid requiring internet access. The interface assigns each bot a random emoji and color.
+The `icon` and `color` fields are optional. Students can send you their preferred emoji and a six-digit hex color (such as `#79bcff`) with their bot; add those preferences to the manifest entry. If either is omitted, the runner assigns a random default. Keep preferences distinct so bots are easy to tell apart. Students do not need to edit `bots.json` themselves.
+
+For compiled or other-language student bots, set `command` to the executable and arguments needed to start your bot; the runner does not build student code or install packages. Avoid requiring internet access.
 
 ### 4. Test and hand it off
 
-Test your bot on both an `add` state and a `remove` state. Confirm it prints one valid move and no other text to standard output. Send the complete bot folder by **Wednesday, October 7th**, with its name, runtime version, and build/setup commands. Include a short README if setup takes more than one step.
+Test your bot on both an `add` state and a `remove` state. Confirm it prints one valid move and no other text to standard output. Send the complete bot folder by **Wednesday, October 7th**, with its name, runtime version, build/setup commands, and optional emoji/color preferences. Include a short README if setup takes more than one step.
 
 The bundled random bot in `bots/random/` uses multiple Python files. Working language demos are in `bots/samples/`. The separate, unfinished starter templates are in `bots/templates/`; copy one into your own folder and fill in its TODOs. C and C++ demos auto-build on first launch, but that initial compilation counts against the demo bot’s clock unless you run `./build` first. Julia requires Julia to be installed on the machine running the tournament.
 
