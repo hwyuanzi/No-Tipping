@@ -20,7 +20,7 @@ class SampleBotTests(unittest.TestCase):
         cls.temp_path = Path(cls.temp.name)
         sample_entries = [
             {'name': 'Sample Python', 'cwd': str(ROOT / 'bots/samples/python'),
-             'command': ['{python}', 'bot.py']},
+             'command': ['{python}', 'runner.py']},
             {'name': 'Sample C++', 'cwd': str(ROOT / 'bots/samples/cpp'),
              'command': ['./bot']},
             {'name': 'Sample C', 'cwd': str(ROOT / 'bots/samples/c'),
@@ -52,6 +52,50 @@ class SampleBotTests(unittest.TestCase):
 
     def test_python_sample(self):
         self.check_protocol(self.sample_bots['Sample Python'])
+
+    def test_python_wrapper_calls_strategy_and_keeps_state(self):
+        with tempfile.TemporaryDirectory() as cwd:
+            folder = Path(cwd)
+            (folder / 'runner.py').write_text(
+                (ROOT / 'bots/templates/python/runner.py').read_text())
+            (folder / 'strategy.py').write_text(
+                'count = 0\n'
+                'def choose_move(state):\n'
+                '    global count\n'
+                '    count += 1\n'
+                '    return {"position": count}\n')
+            bot = {'cwd': cwd, 'command': [sys.executable, 'runner.py']}
+            session = get_move
+            self.assertEqual(session(bot, Game(1).state(), 2), {'position': 1})
+            # A new request uses a new process through get_move; verify the
+            # wrapper's normal one-line protocol independently below.
+            process = subprocess.Popen([sys.executable, 'runner.py'], cwd=cwd,
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE, text=True)
+            try:
+                process.stdin.write(json.dumps(Game(1).state()) + '\n')
+                process.stdin.flush()
+                self.assertEqual(json.loads(process.stdout.readline()), {'position': 1})
+            finally:
+                process.stdin.close()
+                process.kill()
+                process.wait()
+                process.stdout.close()
+                process.stderr.close()
+
+    def test_python_wrapper_strategy_error_stays_off_stdout(self):
+        with tempfile.TemporaryDirectory() as cwd:
+            folder = Path(cwd)
+            (folder / 'runner.py').write_text(
+                (ROOT / 'bots/templates/python/runner.py').read_text())
+            (folder / 'strategy.py').write_text('def choose_move(state):\n    raise RuntimeError("boom")\n')
+            process = subprocess.Popen([sys.executable, 'runner.py'], cwd=cwd,
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate(json.dumps(Game(1).state()) + '\n')
+            self.assertNotEqual(process.returncode, 0)
+            self.assertEqual(stdout, '')
+            self.assertIn('strategy error: boom', stderr)
 
     def test_default_manifest_has_distinct_identities(self):
         bots = list(self.bots.values())

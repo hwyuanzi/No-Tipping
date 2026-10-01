@@ -6,7 +6,7 @@
     "cwd": "bots/random",
     "command": [
       "{python}",
-      "bot.py"
+      "runner.py"
     ]
   },
   {
@@ -16,7 +16,7 @@
     "cwd": "bots/random",
     "command": [
       "{python}",
-      "bot.py"
+      "runner.py"
     ]
   },
   {
@@ -24,7 +24,7 @@
     "cwd": "bots/samples/python",
     "command": [
       "{python}",
-      "bot.py"
+      "runner.py"
     ]
   },
   {

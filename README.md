@@ -61,11 +61,11 @@ With the SSH connection open, visit **http://localhost:8000** in your laptop's b
 
 ### 1. Create a folder
 
-Put your complete project in a folder under `bots/`, for example `bots/shela-bot/`. Include all source files, data, and resources it needs. Multiple files are fine. There is no bot file-size or file-count limit in this runner. Include the language/runtime version and any build or setup steps; compile C/C++ on the machine where the competition will run.
+Put your strategy in a folder under `bots/`, for example `bots/shela-bot/`. For the official Python path, copy `bots/templates/python/` and edit `strategy.py` only. Include any data or resources it needs. Tell the organizer your bot name, optional icon/color, Python version, and any setup notes.
 
-### 2. Read the state and print one move
+### 2. Implement `choose_move(state)`
 
-The runner starts your bot on its first turn and keeps that process running for the rest of the game. Read one JSON object per line from standard input; for each line, print exactly one JSON move on its own line to standard output and flush it. Keep reading until the runner closes standard input at the end of the game. Send diagnostics to standard error. **In-memory variables persist between your turns in the same game**, just as they do in a turn-by-turn client. They reset for the next game, which starts a new process. Each input includes the latest full game state, so use that as your source of truth; persistent variables are optional strategy memory.
+The organizer-owned wrapper starts your strategy, reads one complete JSON state per line, calls `choose_move(state)`, and writes one JSON move per line. Do not implement stdin/stdout handling or print directly to stdout. Send debugging output to stderr. **In-memory variables persist during one game**; a new process starts for the next game.
 
 During placement (`phase` is `add`), return an available weight and position:
 
@@ -79,7 +79,7 @@ During removal (`phase` is `remove`), return an occupied position:
 {"position":-4}
 ```
 
-The input includes `k`, `phase`, `player`, `players`, the board, remaining weights, torque totals, clocks, and a game ID. Positions range from -30 through 30. `player` is the current player's index in `players`; your bot may play first or second. The `remaining` and `clocks` arrays use that same player order. Each board item has a position, weight, and owner (`null` for the initial block); clocks show seconds remaining at the start of the turn.
+The state includes `protocol_version`, `k`, `phase`, `player`, `board`, `remaining`, `torques`, `clocks`, `winner`, `reason`, and, when available, `game_id`, `ply`, and `players`. Positions range from -30 through 30. `player` indexes `players`; `remaining` and `clocks` use the same order. Each board item has `position`, `weight`, and `owner` (`null` for the initial block).
 
 Example input on the first turn with `k=2`:
 
@@ -87,11 +87,11 @@ Example input on the first turn with `k=2`:
 {"protocol_version":1,"k":2,"phase":"add","player":0,"board":[{"position":-4,"weight":3,"owner":null}],"remaining":[[1,2],[1,2]],"torques":{"left":-6,"right":6},"clocks":[120,120],"winner":null,"reason":null,"game_id":"1","ply":1,"players":["Alice","Bob"]}
 ```
 
-Any command-line program that reads and writes this JSON protocol can be used. The examples cover Python, C, C++, and Julia; other languages work if their runtime is installed on the machine running the tournament. The runner launches commands directly, without a shell, with the bot folder as its working directory. `{python}` uses the runner's Python interpreter. The bundled C/C++ demos use small `./run` shell launchers that invoke the local compiler when their executable is missing or out of date.
+Return a placement such as `{"position":-3,"weight":2}` or a removal such as `{"position":-4}`. The game engine remains authoritative: invalid moves are rejected, and tipping, timeout, invalid JSON, excess output, launch failure, and nonzero exit are forfeits. Python is the fully supported typed starter path. C, C++, and Julia now also have organizer-owned wrappers; their strategy receives the state as a JSON string unless the organizer adds an approved JSON library, so these remain advanced paths.
 
 ### 3. Add it to the roster
 
-Add one entry to `bots.json`. The `cwd` path is relative to `bots.json`. For example:
+The organizer adds one entry to `bots.json`; students do not edit the roster or provide an execution command. The `cwd` path is relative to `bots.json`. For example:
 
 ```json
 {"name":"Shela's Bot","icon":"🚀","color":"#79bcff","cwd":"bots/shela-bot","command":["{python}","main.py"]}
@@ -99,13 +99,13 @@ Add one entry to `bots.json`. The `cwd` path is relative to `bots.json`. For exa
 
 The `icon` and `color` fields are optional. Students can send you their preferred emoji and a six-digit hex color (such as `#79bcff`) with their bot; add those preferences to the manifest entry. If either is omitted, the runner assigns a random default. Keep preferences distinct so bots are easy to tell apart. Students do not need to edit `bots.json` themselves.
 
-For compiled or other-language student bots, set `command` to the executable and arguments needed to start your bot; the runner does not build student code or install packages. Avoid requiring internet access.
+For compiled or other-language bots, the organizer sets the build and execution command. Avoid requiring internet access or unapproved dependencies.
 
 ### 4. Test and hand it off
 
 Test your bot on both an `add` state and a `remove` state. Confirm it prints one valid move and no other text to standard output. Send the complete bot folder by **Wednesday, October 7th**, with its name, runtime version, build/setup commands, and optional emoji/color preferences. Include a short README if setup takes more than one step.
 
-The bundled random bot in `bots/random/` uses multiple Python files. Working language demos are in `bots/samples/`. The separate, unfinished starter templates are in `bots/templates/`; copy one into your own folder and fill in its TODOs. C and C++ demos auto-build on first launch, but that initial compilation counts against the demo bot’s clock unless you run `./build` first. Julia requires Julia to be installed on the machine running the tournament.
+The bundled random bot and Python sample use the same wrapper architecture. Working language demos are in `bots/samples/`; starter templates are in `bots/templates/`. C and C++ demos auto-build on first launch, but prebuild them before a tournament. Julia requires Julia to be installed on the machine running the tournament.
 
 ## Rules and limits
 
