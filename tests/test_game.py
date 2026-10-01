@@ -120,7 +120,7 @@ class RunnerTests(unittest.TestCase):
         callbacks = []
 
         def fake_play(ordered, k, clock_seconds, game_id, on_progress,
-                      cancel_event=None):
+                      cancel_event=None, display_delay=0):
             players = [bot['name'] for bot in ordered]
             return {'players': players, 'winner': players[0], 'reason': 'test',
                     'clock_seconds': clock_seconds, 'game_id': game_id, 'frames': []}

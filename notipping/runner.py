@@ -214,7 +214,8 @@ def get_move(bot, state, timeout):
         session.close()
 
 
-def play(bots, k, clock_seconds, game_id, on_progress=None, cancel_event=None):
+def play(bots, k, clock_seconds, game_id, on_progress=None, cancel_event=None,
+         display_delay=0):
     game = Game(k)
     clocks = [float(clock_seconds), float(clock_seconds)]
     frames = []
@@ -268,6 +269,12 @@ def play(bots, k, clock_seconds, game_id, on_progress=None, cancel_event=None):
                 on_progress({'players': players, 'frames': list(frames), 'clocks': list(clocks),
                              'active_player': None, 'active_since': None,
                              'game_id': game_id, 'player_info': [{'name': b['name'], 'icon': b['icon'], 'color': b['color']} for b in bots]})
+            if display_delay > 0:
+                stopped = cancel_event.wait(display_delay) if cancel_event is not None else False
+                if stopped and game.winner is None:
+                    raise TournamentCancelled()
+                if cancel_event is None:
+                    time.sleep(display_delay)
     finally:
         for session in sessions:
             session.close()
@@ -278,7 +285,8 @@ def play(bots, k, clock_seconds, game_id, on_progress=None, cancel_event=None):
 
 
 def tournament(bots, k=15, clock_seconds=120, on_progress=None, pairing=None,
-               game_id_start=1, on_game_complete=None, cancel_event=None):
+               game_id_start=1, on_game_complete=None, cancel_event=None,
+               display_delay=0):
     if clock_seconds <= 0:
         raise ValueError('clock_seconds must be positive')
     Game(k)
@@ -301,7 +309,7 @@ def tournament(bots, k=15, clock_seconds=120, on_progress=None, pairing=None,
             if cancel_event is not None and cancel_event.is_set():
                 raise TournamentCancelled()
             result = play(ordered, k, clock_seconds, str(game_id_start + len(games)),
-                          on_progress, cancel_event)
+                          on_progress, cancel_event, display_delay)
             result.update(pairing_id=pair_id, round_number=round_number,
                           pairing_number=pair_index + 1, pairing_count=len(pairs),
                           pairing_bots=[a['name'], b['name']])

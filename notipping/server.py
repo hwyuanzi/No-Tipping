@@ -66,7 +66,8 @@ def serve(bots, args):
               'k': restored['k'] if restored else args.k,
               'clock_seconds': restored['clock_seconds'] if restored else args.clock,
               'live': None, 'tournament_id': 1, 'next_action': None,
-              'announcement': None, 'stop_requested': False, 'cancelled': False}
+              'announcement': None, 'stop_requested': False, 'cancelled': False,
+              'display_delay': 0}
     resume_game = threading.Event()
     cancel_tournament = threading.Event()
     page = (Path(__file__).resolve().parent.parent / 'web' / 'index.html').read_bytes()
@@ -134,7 +135,7 @@ def serve(bots, args):
             with lock:
                 status['next_action'] = None
 
-    def run(k, clock_seconds, pairing):
+    def run(k, clock_seconds, pairing, display_delay):
         try:
             with lock:
                 if status['result'] is None:
@@ -144,7 +145,7 @@ def serve(bots, args):
                 start_game_id = len(status['result']['games']) + 1
             tournament(bots, k, clock_seconds, on_progress=progress, pairing=pairing,
                        game_id_start=start_game_id, on_game_complete=game_complete,
-                       cancel_event=cancel_tournament)
+                       cancel_event=cancel_tournament, display_delay=display_delay)
             with lock:
                 save_result_locked()
         except TournamentCancelled:
@@ -188,7 +189,7 @@ def serve(bots, args):
                     status.update(result=None, error=None, live=None, k=args.k,
                                   clock_seconds=args.clock, next_action=None,
                                   announcement=None, stop_requested=False,
-                                  cancelled=False,
+                                  cancelled=False, display_delay=0,
                                   tournament_id=status['tournament_id'] + 1)
                     cancel_tournament.clear()
                     try:
@@ -243,6 +244,9 @@ def serve(bots, args):
                 clock_seconds = payload.get('clock_seconds', 120)
                 if type(clock_seconds) not in (int, float) or not 1 <= clock_seconds <= 86400:
                     raise ValueError('clock_seconds must be from 1 to 86400')
+                display_delay = payload.get('display_delay', 0)
+                if type(display_delay) not in (int, float) or display_delay not in (0, 0.25, 0.5, 1, 2):
+                    raise ValueError('display_delay must be 0, 0.25, 0.5, 1, or 2 seconds')
                 pairing = payload.get('pairing')
                 if pairing is not None:
                     if (not isinstance(pairing, list) or len(pairing) != 2 or
@@ -273,8 +277,11 @@ def serve(bots, args):
                     existing.update(k=k, clock_seconds=clock_seconds)
                 cancel_tournament.clear()
                 status.update(running=True, error=None, live=None,
-                              stop_requested=False, cancelled=False)
-            threading.Thread(target=run, args=(k, clock_seconds, pairing), daemon=True).start()
+                              stop_requested=False, cancelled=False,
+                              display_delay=display_delay)
+            threading.Thread(target=run,
+                             args=(k, clock_seconds, pairing, display_delay),
+                             daemon=True).start()
             self.respond(202, b'{"running":true}')
 
     server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)

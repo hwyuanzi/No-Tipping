@@ -21,6 +21,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The default `bots.json` inc
 - Set **Weights per player (k)** to any positive integer and **Clock per player** (default: 120 seconds). The interface accepts values that break the course requirement and displays a red warning when `2k < 50` is not satisfied; it does not prevent you from continuing.
 - Choose **All bot pairings** to play every unique bot-versus-bot matchup, or **Choose two bots** to play only the selected pair. Click **Run tournament**; each pairing plays twice, switching who goes first.
 - After Game 1, click **Ready for round 2 — roles are switched**. After Game 2, the popup reports the pairing winner or a tie.
+- Use **Live move pace** to pause briefly after each move so you can follow the board and live move list. This viewing pause does not use either bot’s clock; **Fast** runs without a pause.
 - Wins accumulate across every game added to the tournament. Use **New tournament / Reset scores** to start over.
 - Click **Stop tournament** to quit a run early. Any completed games and scores stay visible; click **New tournament / Reset scores** afterward to choose new settings and start again.
 
