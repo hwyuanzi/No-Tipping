@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+if [ ! -x bot ] || [ bot.cpp -nt bot ]; then
+    ./build
+fi
+exec ./bot

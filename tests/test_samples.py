@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from notipping.game import Game
-from notipping.runner import get_move, load_bots
+from notipping.runner import get_move, load_bots, tournament
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,28 +76,27 @@ class SampleBotTests(unittest.TestCase):
         self.assertNotEqual(bots[1]['icon'], bots[0]['icon'])
         self.assertNotEqual(bots[1]['color'].lower(), bots[0]['color'].lower())
 
-    def test_c_and_cpp_samples_when_compilers_are_available(self):
-        builds = [
-            ('Sample C++', 'g++', ['-std=c++17', '-O2'], 'cpp', 'bot.cpp'),
-            ('Sample C', 'gcc', ['-std=c11', '-O2'], 'c', 'bot.c'),
-        ]
-        for name, compiler, flags, folder, source in builds:
+    def test_c_and_cpp_sample_launchers_build_and_run(self):
+        for name, compiler in [('Sample C++', 'g++'), ('Sample C', 'gcc')]:
             with self.subTest(language=name):
-                compiler_path = shutil.which(compiler)
-                if compiler_path is None:
+                if shutil.which(compiler) is None:
                     self.skipTest(f'{compiler} is not installed')
-                executable = self.temp_path / (name.lower().replace(' ', '-') + '-bot')
-                subprocess.run([compiler_path, *flags,
-                                str(ROOT / 'bots' / 'samples' / folder / source),
-                                '-o', str(executable)], check=True, capture_output=True)
-                bot = dict(self.sample_bots[name], command=[str(executable)])
-                self.check_protocol(bot)
+                self.check_protocol(self.bots[name])
+
+    def test_cpp_sample_completes_both_games_against_random_a(self):
+        if shutil.which('g++') is None:
+            self.skipTest('g++ is not installed')
+        bots = [self.bots['Sample C++'], self.bots['Random A']]
+        result = tournament(bots, k=1, clock_seconds=30,
+                            pairing=['Sample C++', 'Random A'])
+        self.assertEqual(len(result['games']), 2)
+        self.assertTrue(all(game['reason'] == 'tipping' for game in result['games']))
 
     def test_julia_sample_when_runtime_is_available(self):
         julia = shutil.which('julia')
         if julia is None:
             self.skipTest('Julia is not installed in this environment')
-        bot = dict(self.sample_bots['Sample Julia'],
+        bot = dict(self.bots['Sample Julia'],
                    command=[julia, '--startup-file=no', 'bot.jl'])
         self.check_protocol(bot)
 

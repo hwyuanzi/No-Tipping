@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+compiler=${CC:-gcc}
+command -v "$compiler" >/dev/null 2>&1 || {
+    echo "C sample requires a C11 compiler (set CC or install gcc)." >&2
+    exit 127
+}
+tmp=bot.tmp.$$
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+"$compiler" -std=c11 -O2 bot.c -o "$tmp"
+mv "$tmp" bot
+trap - EXIT HUP INT TERM

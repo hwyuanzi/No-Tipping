@@ -6,11 +6,11 @@ Runs on macOS and Linux with Python 3.8+. The runner uses only the Python standa
 
 ## Getting started
 
-Build the C and C++ examples before using them. Julia must be installed and available as `julia` to run that example.
+C and C++ demos build themselves on first use when `g++` and `gcc` are installed. To keep compilation outside a bot’s game clock, prebuild them before starting a tournament. Julia must be installed and available as `julia` to run that example.
 
 ```sh
-(cd bots/samples/cpp && g++ -std=c++17 -O2 bot.cpp -o bot)
-(cd bots/samples/c && gcc -std=c11 -O2 bot.c -o bot)
+(cd bots/samples/cpp && ./build)
+(cd bots/samples/c && ./build)
 python3 -m notipping --serve
 ```
 
@@ -25,7 +25,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The default `bots.json` inc
 
 The selected `k` and clock are fixed once a tournament starts. Each player's clock runs only while their bot is responding and carries across all of that player's turns in one game. Results save after each game and restore when the server restarts with the same roster.
 
-Select a game to replay it. Use Play, Back, Next, or the slider; expand **Move-by-move log** to jump to a listed move. A tipping move identifies the player who tipped the board and animates the scale.
+Select a game to replay it. Use Play, Back, Next, or the slider; expand **Move-by-move log** to browse moves from every completed game in the tournament and jump to a move. A tipping move identifies the player who tipped the board and animates the scale.
 
 ### Screenshots
 
@@ -85,7 +85,7 @@ Example input on the first turn with `k=2`:
 {"protocol_version":1,"k":2,"phase":"add","player":0,"board":[{"position":-4,"weight":3,"owner":null}],"remaining":[[1,2],[1,2]],"torques":{"left":-6,"right":6},"clocks":[120,120],"winner":null,"reason":null,"game_id":"1","ply":1,"players":["Alice","Bob"]}
 ```
 
-Any command-line program that reads and writes this JSON protocol can be used. The examples cover Python, C, C++, and Julia; other languages work if their runtime is installed on the machine running the tournament. The runner launches commands directly, without a shell, with the bot folder as its working directory. `{python}` uses the runner's Python interpreter.
+Any command-line program that reads and writes this JSON protocol can be used. The examples cover Python, C, C++, and Julia; other languages work if their runtime is installed on the machine running the tournament. The runner launches commands directly, without a shell, with the bot folder as its working directory. `{python}` uses the runner's Python interpreter. The bundled C/C++ demos use small `./run` shell launchers that invoke the local compiler when their executable is missing or out of date.
 
 ### 3. Add it to the roster
 
@@ -95,13 +95,13 @@ Add one entry to `bots.json`. The `cwd` path is relative to `bots.json`. For exa
 {"name":"Shela's Bot","cwd":"bots/shela-bot","command":["{python}","main.py"]}
 ```
 
-For compiled or other-language bots, set `command` to the executable and arguments needed to start your bot. The runner does not compile code or install packages. Avoid requiring internet access. The interface assigns each bot a random emoji and color.
+For compiled or other-language student bots, set `command` to the executable and arguments needed to start your bot; the runner does not build student code or install packages. Avoid requiring internet access. The interface assigns each bot a random emoji and color.
 
 ### 4. Test and hand it off
 
 Test your bot on both an `add` state and a `remove` state. Confirm it prints one valid move and no other text to standard output. Send the complete bot folder by **Wednesday, October 7th**, with its name, runtime version, and build/setup commands. Include a short README if setup takes more than one step.
 
-The bundled random bot in `bots/random/` uses multiple Python files. The language examples are in `bots/samples/`. To test them, list them in `bots.json`; build the C/C++ examples as shown in **Getting started** and install Julia if you want to run that example.
+The bundled random bot in `bots/random/` uses multiple Python files. Working language demos are in `bots/samples/`. The separate, unfinished starter templates are in `bots/templates/`; copy one into your own folder and fill in its TODOs. C and C++ demos auto-build on first launch, but that initial compilation counts against the demo bot’s clock unless you run `./build` first. Julia requires Julia to be installed on the machine running the tournament.
 
 ## Rules and limits
 
@@ -111,7 +111,7 @@ The bundled random bot in `bots/random/` uses multiple Python files. The languag
 - Torque about support `s` is `-3*(0-s) - sum(weight*(position-s))`. This is the one-dimensional lever-arm form of the standard torque equation, `τ = r × F`, summed over the board and blocks; the game omits the shared gravitational acceleration factor and uses clockwise-negative signs. [OpenStax University Physics explains torque and the lever arm](https://openstax.org/books/university-physics-volume-1/pages/10-6-torque). Stability requires left torque `<= 0` and right torque `>= 0`; zero is stable. A move that tips the board loses immediately.
 - Each player gets 120 seconds per game by default. Bot startup and strategy execution count against that player's clock. The browser and command line can change the clock.
 - Standard output and standard error are each limited to **65,536 bytes per move**. This is an output limit, not a source-file limit. Invalid JSON or moves, launch failures, nonzero exits, excess output, and timeout forfeit the game.
-- There is no application-enforced CPU or memory quota beyond the clock. Bots run with the organizer account's filesystem and network permissions; this is not a security sandbox. Submit code you trust, and keep file access within your bot folder. Processes are stopped after each move.
+- There is no application-enforced CPU or memory quota beyond the clock. Bots run with the organizer account's filesystem and network permissions; this is not a security sandbox. Submit code you trust, and keep file access within your bot folder. The process stays alive for the full game, so in-memory variables persist between that bot’s turns; it is stopped when the game ends.
 
 ## Run without the website
 
