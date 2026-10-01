@@ -15,9 +15,7 @@ static int field_int(const char *text, const char *key) {
 
 static int stable(int left, int right) { return left <= 0 && right >= 0; }
 
-int main(void) {
-    char input[65536];
-    if (!fgets(input, sizeof input, stdin)) return 1;
+static int respond(const char *input) {
     const int player = field_int(input, "player");
     const int left = field_int(input, "left");
     const int right = field_int(input, "right");
@@ -94,4 +92,13 @@ int main(void) {
         }
     }
     return 1;
+}
+
+int main(void) {
+    char input[65536];
+    while (fgets(input, sizeof input, stdin)) {
+        if (respond(input) != 0) return 1;
+        fflush(stdout);
+    }
+    return 0;
 }

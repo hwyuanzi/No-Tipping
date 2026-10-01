@@ -11,7 +11,7 @@ def run_weights(payload):
     if not isinstance(payload, dict):
         raise ValueError("Expected a JSON object with k")
     k = payload.get("k")
-    Game(k)  # Enforce integer 1..24, including rejecting booleans.
+    Game(k)  # Enforce a positive integer, including rejecting booleans.
     return k
 
 

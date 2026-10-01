@@ -56,5 +56,7 @@ function choose(text)
     return "{\"position\":$(board[1].position)}"
 end
 
-input = readline()
-println(choose(input))
+for input in eachline(stdin)
+    println(choose(input))
+    flush(stdout)
+end

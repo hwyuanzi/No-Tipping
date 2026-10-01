@@ -1,4 +1,6 @@
 import json
 import sys
 from strategy import choose
-print(json.dumps(choose(json.loads(sys.stdin.readline()))))
+
+for line in sys.stdin:
+    print(json.dumps(choose(json.loads(line))), flush=True)

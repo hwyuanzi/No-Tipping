@@ -5,8 +5,8 @@ class IllegalMove(ValueError):
 
 class Game:
     def __init__(self, k=15):
-        if type(k) is not int or not 1 <= k <= 24:
-            raise ValueError('k must be an integer from 1 to 24')
+        if type(k) is not int or k < 1:
+            raise ValueError('k must be a positive integer')
         self.k = k
         self.board = {-4: {'weight': 3, 'owner': None}}
         self.remaining = [list(range(1, k + 1)), list(range(1, k + 1))]

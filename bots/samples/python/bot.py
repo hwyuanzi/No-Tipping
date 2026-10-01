@@ -36,5 +36,6 @@ def choose(state):
 
 
 if __name__ == "__main__":
-    state = json.loads(sys.stdin.readline())
-    print(json.dumps(choose(state), separators=(",", ":")))
+    for line in sys.stdin:
+        state = json.loads(line)
+        print(json.dumps(choose(state), separators=(",", ":")), flush=True)

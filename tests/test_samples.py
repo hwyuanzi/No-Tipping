@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 import sys
@@ -17,7 +18,20 @@ class SampleBotTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
         cls.temp_path = Path(cls.temp.name)
-        cls.bots = {bot['name']: bot for bot in load_bots(ROOT / 'sample-bots.json')}
+        sample_entries = [
+            {'name': 'Sample Python', 'cwd': str(ROOT / 'bots/samples/python'),
+             'command': ['{python}', 'bot.py']},
+            {'name': 'Sample C++', 'cwd': str(ROOT / 'bots/samples/cpp'),
+             'command': ['./bot']},
+            {'name': 'Sample C', 'cwd': str(ROOT / 'bots/samples/c'),
+             'command': ['./bot']},
+            {'name': 'Sample Julia', 'cwd': str(ROOT / 'bots/samples/julia'),
+             'command': ['julia', '--startup-file=no', 'bot.jl']},
+        ]
+        sample_manifest = cls.temp_path / 'samples.json'
+        sample_manifest.write_text(json.dumps(sample_entries))
+        cls.sample_bots = {bot['name']: bot for bot in load_bots(sample_manifest)}
+        cls.bots = {bot['name']: bot for bot in load_bots(ROOT / 'bots.json')}
 
     @classmethod
     def tearDownClass(cls):
@@ -37,17 +51,19 @@ class SampleBotTests(unittest.TestCase):
         self.assertIsNone(remove_game.winner)
 
     def test_python_sample(self):
-        self.check_protocol(self.bots['Sample Python'])
+        self.check_protocol(self.sample_bots['Sample Python'])
 
-    def test_sample_manifest_gets_distinct_random_identities(self):
+    def test_default_manifest_has_distinct_identities(self):
         bots = list(self.bots.values())
         self.assertTrue(all(bot['icon'] and bot['color'].startswith('#') for bot in bots))
         self.assertEqual(len({bot['icon'] for bot in bots}), len(bots))
         self.assertEqual(len({bot['color'].lower() for bot in bots}), len(bots))
 
-    def test_explicit_identity_is_preserved(self):
-        import json
+    def test_sample_examples_cover_class_languages(self):
+        self.assertEqual(set(self.sample_bots),
+                         {'Sample Python', 'Sample C++', 'Sample C', 'Sample Julia'})
 
+    def test_explicit_identity_is_preserved(self):
         manifest_path = self.temp_path / 'explicit-bots.json'
         manifest_path.write_text(json.dumps([
             {'name': 'Named Bot', 'icon': '♟️', 'color': '#123456',
@@ -74,14 +90,14 @@ class SampleBotTests(unittest.TestCase):
                 subprocess.run([compiler_path, *flags,
                                 str(ROOT / 'bots' / 'samples' / folder / source),
                                 '-o', str(executable)], check=True, capture_output=True)
-                bot = dict(self.bots[name], command=[str(executable)])
+                bot = dict(self.sample_bots[name], command=[str(executable)])
                 self.check_protocol(bot)
 
     def test_julia_sample_when_runtime_is_available(self):
         julia = shutil.which('julia')
         if julia is None:
             self.skipTest('Julia is not installed in this environment')
-        bot = dict(self.bots['Sample Julia'],
+        bot = dict(self.sample_bots['Sample Julia'],
                    command=[julia, '--startup-file=no', 'bot.jl'])
         self.check_protocol(bot)
 

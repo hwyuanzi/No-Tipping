@@ -53,9 +53,7 @@ std::vector<int> remainingFor(const std::string& input, int player) {
 
 bool stable(int left, int right) { return left <= 0 && right >= 0; }
 
-int main() {
-    std::string input;
-    std::getline(std::cin, input);
+std::string chooseMove(const std::string& input) {
     const auto player = integerField(input, "player");
     const auto left = integerField(input, "left");
     const auto right = integerField(input, "right");
@@ -69,27 +67,35 @@ int main() {
             for (int position = -30; position <= 30; ++position) {
                 if (occupied.count(position)) continue;
                 if (stable(left - weight * (position + 3), right - weight * (position + 1))) {
-                    std::cout << "{\"position\":" << position << ",\"weight\":" << weight << "}\n";
-                    return 0;
+                    return "{\"position\":" + std::to_string(position) +
+                           ",\"weight\":" + std::to_string(weight) + "}";
                 }
             }
         }
         for (int position = -30; position <= 30; ++position) {
             if (!occupied.count(position)) {
-                std::cout << "{\"position\":" << position << ",\"weight\":" << weights.front() << "}\n";
-                return 0;
+                return "{\"position\":" + std::to_string(position) +
+                       ",\"weight\":" + std::to_string(weights.front()) + "}";
             }
         }
     } else {
         for (const auto& block : board) {
             if (stable(left + block.weight * (block.position + 3),
                        right + block.weight * (block.position + 1))) {
-                std::cout << "{\"position\":" << block.position << "}\n";
-                return 0;
+                return "{\"position\":" + std::to_string(block.position) + "}";
             }
         }
-        std::cout << "{\"position\":" << board.front().position << "}\n";
-        return 0;
+        return "{\"position\":" + std::to_string(board.front().position) + "}";
     }
-    return 1;
+    return {};
+}
+
+int main() {
+    std::string input;
+    while (std::getline(std::cin, input)) {
+        const auto move = chooseMove(input);
+        if (move.empty()) return 1;
+        std::cout << move << std::endl;
+    }
+    return 0;
 }

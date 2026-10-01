@@ -8,7 +8,7 @@ import secrets
 import signal
 import subprocess
 import sys
-import tempfile
+import threading
 import time
 from itertools import combinations
 from .game import Game, IllegalMove
@@ -65,36 +65,145 @@ def load_bots(path):
     return entries
 
 
-def get_move(bot, state, timeout):
-    # Files avoid unbounded pipe buffering. The launch directory contains all bot files.
-    with tempfile.TemporaryFile() as inp, tempfile.TemporaryFile() as out, tempfile.TemporaryFile() as err:
-        inp.write((json.dumps(state) + '\n').encode())
-        inp.seek(0)
-        proc = subprocess.Popen(bot['command'], cwd=bot['cwd'], stdin=inp,
-                                stdout=out, stderr=err, start_new_session=True)
-        deadline = time.monotonic() + timeout
+class BotSession:
+    """Line-oriented bot connection; one process can handle every turn in a game."""
+    def __init__(self, bot):
+        self.bot = bot
+        self.proc = None
+        self.lock = threading.Lock()
+        self.active_turn = None
+        self.protocol_error = None
+        self.reader_threads = []
+
+    def _start(self):
+        self.proc = subprocess.Popen(
+            self.bot['command'], cwd=self.bot['cwd'], stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
+            start_new_session=True)
+        proc = self.proc
+        self.reader_threads = [
+            threading.Thread(target=self._read_stdout, args=(proc,), daemon=True),
+            threading.Thread(target=self._read_stderr, args=(proc,), daemon=True),
+        ]
+        for thread in self.reader_threads:
+            thread.start()
+
+    def _read_stdout(self, proc):
+        while True:
+            line = proc.stdout.readline(OUTPUT_LIMIT + 1)
+            with self.lock:
+                if self.proc is not proc:
+                    return
+                if not line:
+                    turn = self.active_turn
+                    if turn and turn['response'] is None and turn['error'] is None:
+                        turn['error'] = 'bot exited without returning a move'
+                        turn['event'].set()
+                    return
+                turn = self.active_turn
+                if len(line) > OUTPUT_LIMIT:
+                    message = 'bot output exceeded 64 KiB per stream'
+                    if turn and turn['sent']:
+                        turn['error'] = message
+                        turn['event'].set()
+                    else:
+                        self.protocol_error = message
+                    continue
+                if not turn or not turn['sent']:
+                    self.protocol_error = 'bot wrote to stdout before receiving a move request'
+                elif turn['response'] is not None:
+                    turn['error'] = 'bot must return exactly one JSON line per move'
+                    turn['event'].set()
+                else:
+                    turn['response'] = line
+                    turn['event'].set()
+
+    def _read_stderr(self, proc):
+        while True:
+            chunk = proc.stderr.read(4096)
+            if not chunk:
+                return
+            with self.lock:
+                if self.proc is not proc:
+                    return
+                turn = self.active_turn
+                if turn and turn['sent']:
+                    turn['stderr_bytes'] += len(chunk)
+                    if turn['stderr_bytes'] > OUTPUT_LIMIT:
+                        turn['error'] = 'bot output exceeded 64 KiB per stream'
+                        turn['event'].set()
+
+    def get_move(self, state, timeout):
+        if self.proc is None:
+            self._start()
+        elif self.proc.poll() is not None:
+            raise ValueError('bot process exited before the game ended')
+        with self.lock:
+            if self.protocol_error:
+                raise ValueError(self.protocol_error)
+        turn = {'event': threading.Event(), 'response': None, 'error': None,
+                'stderr_bytes': 0, 'sent': False}
+        with self.lock:
+            self.active_turn = turn
         try:
-            while proc.poll() is None:
+            payload = (json.dumps(state) + '\n').encode()
+            turn['sent'] = True
+            self.proc.stdin.write(payload)
+            self.proc.stdin.flush()
+            deadline = time.monotonic() + timeout
+            while not turn['event'].wait(0.01):
                 if time.monotonic() >= deadline:
                     raise ValueError('move timed out')
-                if os.fstat(out.fileno()).st_size > OUTPUT_LIMIT or os.fstat(err.fileno()).st_size > OUTPUT_LIMIT:
-                    raise ValueError('bot output exceeded 64 KiB per stream')
-                time.sleep(0.01)
+                if self.proc.poll() is not None:
+                    raise ValueError('bot exited before returning a move')
+            with self.lock:
+                if turn['error']:
+                    raise ValueError(turn['error'])
+                if self.protocol_error:
+                    raise ValueError(self.protocol_error)
+                response = turn['response']
             if time.monotonic() > deadline:
                 raise ValueError('clock expired')
-            if proc.returncode != 0:
-                raise ValueError('bot exited with status ' + str(proc.returncode))
-            if os.fstat(out.fileno()).st_size > OUTPUT_LIMIT or os.fstat(err.fileno()).st_size > OUTPUT_LIMIT:
-                raise ValueError('bot output exceeded 64 KiB per stream')
-            out.seek(0)
-            return json.loads(out.read(OUTPUT_LIMIT).decode())
+            if response is None:
+                raise ValueError('bot exited without returning a move')
+            return json.loads(response.decode())
+        except (BrokenPipeError, OSError) as exc:
+            raise ValueError('bot process failed: ' + str(exc)) from exc
         finally:
-            # Clean up child processes as well, even if the main bot already exited.
-            try:
-                os.killpg(proc.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+            with self.lock:
+                if self.active_turn is turn:
+                    self.active_turn = None
+
+    def close(self):
+        proc, self.proc = self.proc, None
+        if proc is None:
+            return
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            if proc.poll() is None:
+                proc.kill()
+        try:
+            proc.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            proc.kill()
             proc.wait()
+        for thread in self.reader_threads:
+            thread.join(timeout=1)
+        for stream in (proc.stdin, proc.stdout, proc.stderr):
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+
+def get_move(bot, state, timeout):
+    """Compatibility helper for one request; games use a persistent BotSession."""
+    session = BotSession(bot)
+    try:
+        return session.get_move(state, timeout)
+    finally:
+        session.close()
 
 
 def play(bots, k, clock_seconds, game_id, on_progress=None):
@@ -112,39 +221,44 @@ def play(bots, k, clock_seconds, game_id, on_progress=None):
         frames.append(state)
         return state
 
+    sessions = [BotSession(bot) for bot in bots]
     frame()
-    while game.winner is None:
-        player = game.turn
-        state = game.state()
-        state.update(game_id=game_id, ply=len(frames), players=players,
-                     clocks=list(clocks))
-        active_since = time.time()
-        if on_progress:
-            on_progress({'players': players, 'frames': list(frames), 'clocks': list(clocks),
-                         'active_player': player, 'active_since': active_since,
-                         'game_id': game_id, 'player_info': [{'name': b['name'], 'icon': b['icon'], 'color': b['color']} for b in bots]})
-        move = None
-        started = time.monotonic()
-        try:
-            if clocks[player] <= 0:
-                raise ValueError('clock expired')
-            move = get_move(bots[player], state, clocks[player])
-            elapsed = time.monotonic() - started
-            clocks[player] = max(0.0, clocks[player] - elapsed)
-            game.apply(move)
-        except (OSError, ValueError, IllegalMove) as exc:
-            elapsed = time.monotonic() - started
-            clocks[player] = max(0.0, clocks[player] - elapsed)
-            if 'clock expired' in str(exc) or clocks[player] <= 0:
-                clocks[player] = 0.0
-                game.forfeit('time')
-            else:
-                game.forfeit(str(exc))
-        current = frame(move)
-        if on_progress:
-            on_progress({'players': players, 'frames': list(frames), 'clocks': list(clocks),
-                         'active_player': None, 'active_since': None,
-                         'game_id': game_id, 'player_info': [{'name': b['name'], 'icon': b['icon'], 'color': b['color']} for b in bots]})
+    try:
+        while game.winner is None:
+            player = game.turn
+            state = game.state()
+            state.update(game_id=game_id, ply=len(frames), players=players,
+                         clocks=list(clocks))
+            active_since = time.time()
+            if on_progress:
+                on_progress({'players': players, 'frames': list(frames), 'clocks': list(clocks),
+                             'active_player': player, 'active_since': active_since,
+                             'game_id': game_id, 'player_info': [{'name': b['name'], 'icon': b['icon'], 'color': b['color']} for b in bots]})
+            move = None
+            started = time.monotonic()
+            try:
+                if clocks[player] <= 0:
+                    raise ValueError('clock expired')
+                move = sessions[player].get_move(state, clocks[player])
+                elapsed = time.monotonic() - started
+                clocks[player] = max(0.0, clocks[player] - elapsed)
+                game.apply(move)
+            except (OSError, ValueError, IllegalMove) as exc:
+                elapsed = time.monotonic() - started
+                clocks[player] = max(0.0, clocks[player] - elapsed)
+                if 'clock expired' in str(exc) or clocks[player] <= 0:
+                    clocks[player] = 0.0
+                    game.forfeit('time')
+                else:
+                    game.forfeit(str(exc))
+            frame(move)
+            if on_progress:
+                on_progress({'players': players, 'frames': list(frames), 'clocks': list(clocks),
+                             'active_player': None, 'active_since': None,
+                             'game_id': game_id, 'player_info': [{'name': b['name'], 'icon': b['icon'], 'color': b['color']} for b in bots]})
+    finally:
+        for session in sessions:
+            session.close()
     return {'players': players, 'winner': bots[game.winner]['name'],
             'reason': game.reason, 'clock_seconds': clock_seconds, 'game_id': game_id,
             'player_info': [{'name': b['name'], 'icon': b['icon'], 'color': b['color']} for b in bots],

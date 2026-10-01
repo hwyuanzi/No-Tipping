@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 from unittest.mock import patch
 from notipping.game import Game, IllegalMove
-from notipping.runner import get_move, load_bots, tournament
+from notipping.runner import BotSession, get_move, load_bots, tournament
 
 class RulesTests(unittest.TestCase):
     def test_initial_torque_includes_board(self):
@@ -49,12 +49,33 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(g.winner, 1)
 
     def test_weight_bounds(self):
-        for k in [0, 25, True, 1.5]:
+        for k in [0, -1, True, 1.5]:
             with self.assertRaises(ValueError): Game(k)
+        self.assertEqual(Game(25).k, 25)
+        self.assertEqual(Game(31).k, 31)
+        self.assertEqual(Game(1000).k, 1000)
 
 class RunnerTests(unittest.TestCase):
+    def test_bot_session_keeps_process_memory_between_moves(self):
+        with tempfile.TemporaryDirectory() as cwd:
+            bot = {
+                'cwd': cwd,
+                'command': [sys.executable, '-u', '-c',
+                            'import json,sys\ncount=0\n'
+                            'for line in sys.stdin:\n'
+                            ' count += 1\n'
+                            ' print(json.dumps({"position":count}), flush=True)'],
+            }
+            session = BotSession(bot)
+            try:
+                state = Game(1).state()
+                self.assertEqual(session.get_move(state, 2), {'position': 1})
+                self.assertEqual(session.get_move(state, 2), {'position': 2})
+            finally:
+                session.close()
+
     def test_double_round_robin(self):
-        bots = load_bots(Path(__file__).resolve().parents[1] / 'bots.json')
+        bots = load_bots(Path(__file__).resolve().parents[1] / 'bots.json')[:2]
         r = tournament(bots, k=2, clock_seconds=3)
         self.assertEqual(len(r['games']), 2)
         self.assertEqual(r['games'][0]['players'], list(reversed(r['games'][1]['players'])))
