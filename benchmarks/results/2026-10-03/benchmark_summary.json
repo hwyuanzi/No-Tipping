@@ -1,0 +1,38 @@
+{
+  "strategy_sha256": "9d9feab4aaf06a630dc65a4ab316692d5d5161f1271d5cffa4ec859e66acba5e",
+  "arena_5_seconds": {
+    "games": 64,
+    "wins": 59,
+    "max_our_seconds": 4.45129,
+    "by_opponent": {
+      "uniform": {
+        "wins": 16,
+        "games": 16
+      },
+      "course_random": {
+        "wins": 15,
+        "games": 16
+      },
+      "pressure_exact22": {
+        "wins": 15,
+        "games": 16
+      },
+      "minimax_exact22": {
+        "wins": 13,
+        "games": 16
+      }
+    }
+  },
+  "default_120_seconds": {
+    "reference_games": 4,
+    "reference_wins": 4,
+    "protocol_games": 2,
+    "protocol_wins": 2
+  },
+  "protocol_20_seconds": {
+    "games": 20,
+    "wins": 17,
+    "wins_excluding_k1": 15,
+    "games_excluding_k1": 16
+  }
+}

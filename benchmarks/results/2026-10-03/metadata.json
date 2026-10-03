@@ -1,0 +1,8 @@
+{
+  "recorded_on": "2026-10-03",
+  "strategy_sha256": "9d9feab4aaf06a630dc65a4ab316692d5d5161f1271d5cffa4ec859e66acba5e",
+  "compiler": "Apple Clang 21.0.0",
+  "platform": "arm64 macOS",
+  "test_python": "3.14.7",
+  "notes": "Historical measurements from initial implementation. arena_initial.csv predates the final strategy and is excluded from the summary. Final-version measurements are not rerun as part of documentation cleanup."
+}

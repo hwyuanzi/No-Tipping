@@ -1,0 +1,3 @@
+k,opponent,seed,seat,win,reason,our_seconds,plies
+24,minimax_exact22,0,0,1,tipping,91.400636,86
+24,minimax_exact22,0,1,1,tipping,94.924964,87

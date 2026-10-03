@@ -1,0 +1,44 @@
+{
+  "validated_on": "2026-10-03",
+  "purpose": "Repository maintenance validation; historical performance matrix was not rerun.",
+  "strategy_sha256": "9d9feab4aaf06a630dc65a4ab316692d5d5161f1271d5cffa4ec859e66acba5e",
+  "compiler": "Apple Clang 21.0.0",
+  "platform": "arm64 macOS",
+  "python": "3.14.7",
+  "protected_files_unchanged": 50,
+  "build": {
+    "command": "(cd bots/fulcrum && ./build)",
+    "exit_code": 0
+  },
+  "unittest": {
+    "command": "python3 -m unittest discover -s tests -v",
+    "tests": 27,
+    "passed": 27,
+    "skipped": 0,
+    "exit_code": 0
+  },
+  "independent_oracle": {
+    "inventory_legality_checks": 87334,
+    "stable_subset_outcomes": 56490,
+    "winning_move_decisions": 80,
+    "exit_code": 0,
+    "asan_ubsan_exit_code": 0
+  },
+  "full_k1_oracle": {
+    "result": "Player 0 loses against optimal play",
+    "exit_code": 0
+  },
+  "protocol_smoke": {
+    "command": "python3 tools/benchmark_protocol.py --clock 2 --ks 4 --opponents 'Sample Python' --output benchmarks/local/protocol_smoke.json",
+    "games": 2,
+    "wins": 2,
+    "normal_tipping_results": 2
+  },
+  "arena_smoke": {
+    "command": "benchmarks/local/arena_fulcrum 1 2 benchmarks/local/arena_smoke.csv 4 2",
+    "games": 2,
+    "wins": 2,
+    "normal_tipping_results": 2
+  },
+  "historical_summary_reproduced": true
+}

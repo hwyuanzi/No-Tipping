@@ -1,0 +1,1 @@
+PASS: 87334 inventory legality checks, 56490 exhaustive subset outcomes, 80 winning-move decisions
