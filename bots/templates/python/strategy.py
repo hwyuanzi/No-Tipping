@@ -17,6 +17,19 @@ def legal_remove_moves(state):
     return ({"position": block["position"]} for block in state["board"])
 
 
+def stable_after_add(state, position, weight):
+    left = state["torques"]["left"] - weight * (position + 3)
+    right = state["torques"]["right"] - weight * (position + 1)
+    return left <= 0 and right >= 0
+
+
+def stable_after_remove(state, position):
+    block = next(block for block in state["board"] if block["position"] == position)
+    left = state["torques"]["left"] + block["weight"] * (position + 3)
+    right = state["torques"]["right"] + block["weight"] * (position + 1)
+    return left <= 0 and right >= 0
+
+
 def choose_move(state):
     """Return {position, weight} during add, or {position} during remove."""
     if state["phase"] == "add":

@@ -1,8 +1,8 @@
 # Julia strategy template
 
-Implement `choose_move(state)` in `strategy.jl`. The state is one complete
-JSON string and the function returns one JSON move string. The organizer
-launches `runner.jl`, which owns stdin/stdout, flushing, and errors.
+Implement `choose_move(state::GameState)::Move` in `strategy.jl`. The wrapper
+passes a native `GameState` and serializes the native `Move` result. The
+organizer launches `runner.jl`, which owns stdin/stdout, flushing, and errors.
 
-This template deliberately has no package dependency. Use an organizer-
-approved JSON package only if the tournament environment provides it.
+This template deliberately has no package dependency; the organizer-owned
+`protocol.jl` contains the protocol adapter.

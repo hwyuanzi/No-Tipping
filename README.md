@@ -61,7 +61,7 @@ With the SSH connection open, visit **http://localhost:8000** in your laptop's b
 
 ### 1. Create a folder
 
-Put your strategy in a folder under `bots/`, for example `bots/shela-bot/`. For the official Python path, copy `bots/templates/python/` and edit `strategy.py` only. Include any data or resources it needs. Tell the organizer your bot name, optional icon/color, Python version, and any setup notes.
+Put your strategy in a folder under `bots/`, for example `bots/shela-bot/`. Copy the template folder for your language and edit only its student-owned strategy file: `strategy.py`, `strategy.cpp`, `strategy.c`, or `strategy.jl`. Include any data or resources it needs. Tell the organizer your bot name, optional icon/color, language/runtime version, and any setup notes.
 
 ### 2. Implement `choose_move(state)`
 
@@ -87,7 +87,7 @@ Example input on the first turn with `k=2`:
 {"protocol_version":1,"k":2,"phase":"add","player":0,"board":[{"position":-4,"weight":3,"owner":null}],"remaining":[[1,2],[1,2]],"torques":{"left":-6,"right":6},"clocks":[120,120],"winner":null,"reason":null,"game_id":"1","ply":1,"players":["Alice","Bob"]}
 ```
 
-Return a placement such as `{"position":-3,"weight":2}` or a removal such as `{"position":-4}`. The game engine remains authoritative: invalid moves are rejected, and tipping, timeout, invalid JSON, excess output, launch failure, and nonzero exit are forfeits. Python is the fully supported typed starter path. C, C++, and Julia now also have organizer-owned wrappers; their strategy receives the state as a JSON string unless the organizer adds an approved JSON library, so these remain advanced paths.
+Return a placement such as `{"position":-3,"weight":2}` or a removal such as `{"position":-4}`. The game engine remains authoritative: invalid moves are rejected, and tipping, timeout, invalid JSON, excess output, launch failure, and nonzero exit are forfeits. Python, C++, C, and Julia now all have organizer-owned wrappers and native strategy state/move types. The C/C++/Julia adapters use dependency-free protocol parsers, so students do not write JSON or process-management code.
 
 ### 3. Add it to the roster
 
@@ -105,7 +105,7 @@ For compiled or other-language bots, the organizer sets the build and execution 
 
 Test your bot on both an `add` state and a `remove` state. Confirm it prints one valid move and no other text to standard output. Send the complete bot folder by **Wednesday, October 7th**, with its name, runtime version, build/setup commands, and optional emoji/color preferences. Include a short README if setup takes more than one step.
 
-The bundled random bot and Python sample use the same wrapper architecture. Working language demos are in `bots/samples/`; starter templates are in `bots/templates/`. C and C++ demos auto-build on first launch, but prebuild them before a tournament. Julia requires Julia to be installed on the machine running the tournament.
+The bundled random bot and all four language samples use the same wrapper architecture. Working language demos are in `bots/samples/`; starter templates are in `bots/templates/`. C and C++ demos auto-build on first launch, but prebuild them before a tournament. Julia requires Julia to be installed on the machine running the tournament.
 
 ## Rules and limits
 

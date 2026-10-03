@@ -8,6 +8,6 @@ command -v "$compiler" >/dev/null 2>&1 || {
 }
 tmp=bot.tmp.$$
 trap 'rm -f "$tmp"' EXIT HUP INT TERM
-"$compiler" -std=c11 -O2 bot.c -o "$tmp"
+"$compiler" -std=c11 -O2 ../../templates/c/runner.c ../../templates/c/strategy.c -o "$tmp"
 mv "$tmp" bot
 trap - EXIT HUP INT TERM

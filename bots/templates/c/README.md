@@ -1,10 +1,11 @@
 # C strategy template
 
-Implement `choose_move` in `strategy.c`. The `state` argument is one complete
-JSON line and `output` must receive exactly one JSON move object. Build with:
+Implement `choose_move(const GameState *, Move *)` in `strategy.c`. `GameState`
+and `Move` are native structs with the same fields and move shapes described in
+the project README. Build with:
 
 ```sh
-cc -std=c11 -O2 runner.c strategy.c -o bot
+./build
 ```
 
-The organizer launches `bot`; do not add another stdin/stdout loop.
+The organizer launches `bot`; do not add another stdin/stdout loop or JSON parser.

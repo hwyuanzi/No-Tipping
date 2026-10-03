@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-if [ ! -x bot ] || [ bot.c -nt bot ]; then
+if [ ! -x bot ] || [ bot.c -nt bot ] || [ ../../templates/c/runner.c -nt bot ] || [ ../../templates/c/strategy.c -nt bot ] || [ ../../templates/c/strategy.h -nt bot ]; then
     ./build
 fi
 exec ./bot

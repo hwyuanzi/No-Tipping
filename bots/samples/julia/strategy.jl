@@ -1,3 +1,4 @@
+# Sample student strategy using the same typed API as bots/templates/julia.
 occupied(state, p) = any(block -> block.position == p, state.board)
 stable_after_add(state, p, w) = state.torque_left - w * (p + 3) <= 0 && state.torque_right - w * (p + 1) >= 0
 function stable_after_remove(state, p)

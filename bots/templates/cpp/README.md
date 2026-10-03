@@ -1,11 +1,11 @@
 # C++ strategy template
 
-Implement `choose_move` in `strategy.cpp`. The argument is one complete JSON
-state string and the return value must be exactly one JSON move object. Build
-with:
+Implement `Move choose_move(const GameState&)` in `strategy.cpp`. `GameState`
+and `Move` are native structs with the same fields and move shapes described in
+the project README. Build with:
 
 ```sh
-g++ -std=c++17 -O2 runner.cpp strategy.cpp -o bot
+./build
 ```
 
-The organizer launches `bot`; do not add another stdin/stdout loop.
+The organizer launches `bot`; do not add another stdin/stdout loop or JSON parser.
