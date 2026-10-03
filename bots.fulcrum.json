@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Random A",
+    "icon": "🎲",
+    "color": "#79bcff",
+    "cwd": "bots/random",
+    "command": [
+      "{python}",
+      "runner.py"
+    ]
+  },
+  {
+    "name": "Random B",
+    "icon": "🐙",
+    "color": "#e9a9ef",
+    "cwd": "bots/random",
+    "command": [
+      "{python}",
+      "runner.py"
+    ]
+  },
+  {
+    "name": "Sample Python",
+    "cwd": "bots/samples/python",
+    "command": [
+      "{python}",
+      "runner.py"
+    ]
+  },
+  {
+    "name": "Sample C++",
+    "cwd": "bots/samples/cpp",
+    "command": [
+      "./run"
+    ]
+  },
+  {
+    "name": "Sample C",
+    "cwd": "bots/samples/c",
+    "command": [
+      "./run"
+    ]
+  },
+  {
+    "name": "Sample Julia",
+    "cwd": "bots/samples/julia",
+    "command": [
+      "julia",
+      "--startup-file=no",
+      "bot.jl"
+    ]
+  },
+  {
+    "name": "Fulcrum",
+    "icon": "⚖️",
+    "color": "#19A7CE",
+    "cwd": "bots/fulcrum",
+    "command": [
+      "./bot"
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "name": "Fulcrum",
+  "icon": "⚖️",
+  "color": "#19A7CE",
+  "cwd": "bots/fulcrum",
+  "command": [
+    "./bot"
+  ]
+}
