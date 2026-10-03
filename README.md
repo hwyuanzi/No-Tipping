@@ -38,11 +38,14 @@ Select a game to replay it. Use Play, Back, Next, or the slider; expand **Move-b
 
 Below are 3 screenshots showing the UI. The first shows the browser during the "Placement" phase. The second shows the board during the "Removal" phase. Notice the different block labels. The third shows the board once it has been tipped. 
 
-![Gameplay during the "Placement" Phase](docs/screenshots/placement-phase.png "This is what it looks like during the "Placement" phase. The blocks will be split into **Not Yet Placed** and **On Board**.")
+![Gameplay during the Placement phase](docs/screenshots/placement-phase.png)
+*During the Placement phase, blocks are split into **Not Yet Placed** and **On Board**.*
 
-![Gameplay during the "Removal" Phase](docs/screenshots/removal-phase.png ""This is what it looks like during the "Removal" phase. The blocks will be split into **On Board** and **Removed**.")
+![Gameplay during the Removal phase](docs/screenshots/removal-phase.png)
+*During the Removal phase, blocks are split into **On Board** and **Removed**.*
 
-![Game ends when the board is tipped](docs/screenshots/tipped-board.png ""This is what it looks like when the board is tipped and the game ends. The winner will be announced with confetti (and maybe kit kats).")
+![Game ends when the board is tipped](docs/screenshots/tipped-board.png)
+*When the board tips, the game ends and the winner is announced with confetti and Kit Kats.*
 
 ### Run on crunchy5
 
