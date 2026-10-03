@@ -67,6 +67,15 @@ ssh -J YOUR_USERNAME@access.cims.nyu.edu \
 
 With the SSH connection open, visit **http://localhost:8000** in your laptop's browser. The server listens only on crunchy5's localhost; use `--port` and the matching forwarded port if 8000 is taken.
 
+### Run without the website
+
+```sh
+python3 -m notipping --bots bots.json --k 24 --clock 120 --output results.json
+```
+
+Each unordered bot pair plays twice, swapping who goes first. A win earns one point, so the two-game pairing may end tied. The output JSON saves every game. Starting a new browser tournament resets the previous scores. Completed results are saved as each game finishes.
+
+
 ## Instructions for my peers: Making a bot
 
 ### 1. Create a folder
@@ -132,6 +141,7 @@ To tun the full test suite from the repository root:
 python -m unittest discover -s tests -v
 ```
 
+
 ### 5. Hand-Off
 
 Please email me your complete bot folder by **Wednesday, October 7th**, with a preferred bot name, runtime version, build/setup commands, and optional emoji/color preferences. Include a short README if setup takes more than one step.
@@ -170,18 +180,3 @@ The bundled random bot and all four language samples use the same wrapper archit
 - Standard output and standard error are each limited to **65,536 bytes per move**. This is an output limit, not a source-file limit. Invalid JSON or moves, launch failures, nonzero exits, excess output, and timeout forfeit the game.
 - There is no application-enforced CPU or memory quota beyond the clock. The process stays alive for the full game, so in-memory variables persist between that bot’s turns; it is stopped when the game ends.
 
-## Run without the website
-
-```sh
-python3 -m notipping --bots bots.json --k 24 --clock 120 --output results.json
-```
-
-Each unordered bot pair plays twice, swapping who goes first. A win earns one point; the two-game pairing may end tied. The output JSON saves every game. Starting a new browser tournament resets the previous scores; completed results are saved as each game finishes.
-
-## Tests
-
-```sh
-python3 -m unittest discover -s tests -v
-```
-
-Note: The Julia sample test is skipped if Julia is not installed.
