@@ -7,7 +7,7 @@ import sys
 from unittest.mock import patch
 from notipping.game import Game, IllegalMove
 from notipping.runner import (BotSession, TournamentCancelled, get_move,
-                              load_bots, tournament)
+                              load_bots, play, tournament)
 
 class RulesTests(unittest.TestCase):
     def test_initial_torque_includes_board(self):
@@ -59,6 +59,42 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(Game(1000).k, 1000)
 
 class RunnerTests(unittest.TestCase):
+    def test_play_starts_all_bots_before_the_first_clock(self):
+        with tempfile.TemporaryDirectory() as cwd:
+            markers = [Path(cwd) / 'bot-a-started', Path(cwd) / 'bot-b-started']
+            bots = []
+            for marker in markers:
+                bots.append({
+                    'name': marker.stem,
+                    'cwd': cwd,
+                    'icon': '🤖',
+                    'color': '#123456',
+                    'command': [sys.executable, '-u', '-c',
+                                'import json, pathlib, sys, time\n'
+                                f'time.sleep(0.05); pathlib.Path({str(marker)!r}).touch()\n'
+                                'for line in sys.stdin:\n'
+                                ' print(json.dumps({"position": 30, "weight": 15}), flush=True)'],
+                })
+
+            started = []
+            original_start = BotSession.start
+
+            def record_start(session):
+                started.append(session.bot['name'])
+                return original_start(session)
+
+            def check_first_progress(update):
+                if update['active_player'] is not None:
+                    self.assertEqual(set(started), {marker.stem for marker in markers})
+
+            with patch.object(BotSession, 'start', new=record_start):
+                play_result = play(
+                    bots, k=15, clock_seconds=2, game_id='startup-test',
+                    on_progress=check_first_progress)
+
+            self.assertEqual(play_result['reason'], 'tipping')
+            self.assertTrue(all(marker.exists() for marker in markers))
+
     def test_bot_session_keeps_process_memory_between_moves(self):
         with tempfile.TemporaryDirectory() as cwd:
             bot = {

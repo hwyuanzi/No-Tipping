@@ -79,7 +79,16 @@ class BotSession:
         self.protocol_error = None
         self.reader_threads = []
 
-    def _start(self):
+    def start(self):
+        """Start the bot process before the game clock is charged.
+
+        Starting is idempotent so callers can eagerly launch all bots at the
+        beginning of a game while get_move remains safe for one-off callers.
+        """
+        if self.proc is not None:
+            if self.proc.poll() is not None:
+                raise ValueError('bot process exited before the game ended')
+            return
         self.proc = subprocess.Popen(
             self.bot['command'], cwd=self.bot['cwd'], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0,
@@ -139,7 +148,7 @@ class BotSession:
 
     def get_move(self, state, timeout, cancel_event=None):
         if self.proc is None:
-            self._start()
+            self.start()
         elif self.proc.poll() is not None:
             raise ValueError('bot process exited before the game ended')
         with self.lock:
@@ -231,8 +240,19 @@ def play(bots, k, clock_seconds, game_id, on_progress=None, cancel_event=None,
         return state
 
     sessions = [BotSession(bot) for bot in bots]
-    frame()
     try:
+        # Launch every bot before the first turn begins. Process startup is
+        # setup time, not time spent thinking on a player's clock.
+        for player, session in enumerate(sessions):
+            try:
+                session.start()
+            except (OSError, ValueError) as exc:
+                # A launch failure is still a forfeit, but it must not charge
+                # either clock because the game has not started yet.
+                game.turn = player
+                game.forfeit(str(exc))
+                break
+        frame()
         while game.winner is None:
             if cancel_event is not None and cancel_event.is_set():
                 raise TournamentCancelled()
