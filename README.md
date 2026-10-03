@@ -31,11 +31,11 @@ Select a game to replay it. Use Play, Back, Next, or the slider; expand **Move-b
 
 ### Screenshots
 
-These screenshots use a one-weight demo matchup. The first shows the stable starting board during replay; the second shows the board after a move tips it.
+These screenshots use a one-weight demo matchup. The first shows the stable starting board during replay; the second shows the board after a move tips it. They document the same board, move log, and replay UI available during a tournament.
 
-![Stable No Tipping board in replay](docs/screenshots/stable-board.png)
+![Stable No Tipping board in replay](docs/screenshots/stable-board.png "Stable board during replay")
 
-![No Tipping board after it tips](docs/screenshots/tipped-board.png)
+![No Tipping board after it tips](docs/screenshots/tipped-board.png "Board after a tipping move")
 
 ### Run on crunchy5
 
@@ -112,7 +112,29 @@ The bundled random bot and all four language samples use the same wrapper archit
 - Each player has one weight of every size from 1 to `k`. The course requires `2k < 50` (so `k` must be at most 24). The interface accepts any positive integer `k`; if `k` is 25 or greater, it displays a red warning that the course requirement is not met, but still lets you continue. The board has 60 open positions, so values above `k=30` cannot fit all players' weights during placement.
 - The board is at position 0 and weighs 3 kg. Supports are at -3 and -1. The initial 3 kg block is at -4. Each position can hold at most one block; both support positions can hold weights.
 - Players alternate placing weights until both players have placed all of theirs. Only then does player 0 start removing blocks. Either player may remove any placed block, including the opponent's or the initial block. The board itself cannot be removed. In other words, you cannot remove any block while placement is still underway.
-- Torque about support `s` is `-3*(0-s) - sum(weight*(position-s))`. This is the one-dimensional lever-arm form of the standard torque equation, `τ = r × F`, summed over the board and blocks; the game omits the shared gravitational acceleration factor and uses clockwise-negative signs. [OpenStax University Physics explains torque and the lever arm](https://openstax.org/books/university-physics-volume-1/pages/10-6-torque). Stability requires left torque `<= 0` and right torque `>= 0`; zero is stable. A move that tips the board loses immediately.
+- Torque is calculated independently about each support. For a support at position `s`, the game uses:
+
+  ```text
+  τ(s) = -3 × (0 − s) − Σ [ wᵢ × (pᵢ − s) ]
+  ```
+
+  Here, `s` is the support position (`-3` or `-1`), the `3` is the board's weight at position `0`, `pᵢ` is a block's position, and `wᵢ` is that block's weight. The game omits the shared gravitational acceleration factor because it would multiply every term equally. With the game's clockwise-negative sign convention:
+
+  ```text
+  τ_left  = τ(-3) ≤ 0
+  τ_right = τ(-1) ≥ 0
+  ```
+
+  Both inequalities must hold for the board to be stable; zero torque is stable. A move that makes either inequality false tips the board and loses immediately. This is the one-dimensional lever-arm form of `τ = r × F`; [OpenStax University Physics explains torque and the lever arm](https://openstax.org/books/university-physics-volume-1/pages/10-6-torque).
+
+  For the initial board and block, the values are:
+
+  ```text
+  τ(-3) = -3 × (0 − (-3)) − 3 × (-4 − (-3)) = -9 + 3 = -6
+  τ(-1) = -3 × (0 − (-1)) − 3 × (-4 − (-1)) = -3 + 9 =  6
+  ```
+
+  Therefore the initial position is stable because `-6 ≤ 0` and `6 ≥ 0`.
 - Each player gets 120 seconds per game by default. Bot startup and strategy execution count against that player's clock. The browser and command line can change the clock.
 - Standard output and standard error are each limited to **65,536 bytes per move**. This is an output limit, not a source-file limit. Invalid JSON or moves, launch failures, nonzero exits, excess output, and timeout forfeit the game.
 - There is no application-enforced CPU or memory quota beyond the clock. Bots run with the organizer account's filesystem and network permissions; this is not a security sandbox. Submit code you trust, and keep file access within your bot folder. The process stays alive for the full game, so in-memory variables persist between that bot’s turns; it is stopped when the game ends.
